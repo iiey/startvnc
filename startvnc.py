@@ -25,14 +25,18 @@ import shlex
 import subprocess
 import sys
 import time
+from typing import Any, Callable, cast, Optional, TypeVar
 
 
-def check_remote(func):
+F = TypeVar('F', bound=Callable[..., Any])
+
+
+def check_remote(func: F) -> F:
     """decorator to validate attribute remote of class Vnc
     execute decorated function if remote's valid otherwise return stderr
     """
     @functools.wraps(func)
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
         isVnc = isinstance(self, Vnc) and hasattr(self, 'remote')
         if isVnc and self.remote:
             return func(self, *args, **kwargs)
@@ -41,7 +45,7 @@ def check_remote(func):
         else:
             print("Could not identify ip from paramter: {}"
                   .format(self.ip), file=sys.stderr)
-    return wrapper
+    return cast(F, wrapper)
 
 
 class Vnc:
@@ -51,7 +55,7 @@ class Vnc:
     __SERVER = 'x0tigervncserver'   # vnc program name
     __CLIENT = 'vncviewer'
 
-    def __init__(self, ip_address):
+    def __init__(self, ip_address: str) -> None:
         """constructor of Vnc takes an input string
         instance attributes:
             ip (str): store input ip_address
@@ -63,7 +67,7 @@ class Vnc:
         self.remote = self.get_remote(ip_address)
 
     @staticmethod
-    def get_remote(ip_address):
+    def get_remote(ip_address: str) -> Optional[str]:
         """function to parse argument
         use regex to check either of of two matches '^(m1)|(m2)$'
         --> match.groups(): (g1, g2, g3, g4)
@@ -96,7 +100,7 @@ class Vnc:
         return remote
 
     @check_remote
-    def connect_server(self, localport=9900):
+    def connect_server(self, localport: int = 9900) -> None:
         """function to connect with tigervnc server
         bypass password prompt with a valid password file under: '~/.vnc/labs'
         Args:
@@ -123,7 +127,7 @@ class Vnc:
         os.system(cmd)
 
     @check_remote
-    def start_server(self, term=False):
+    def start_server(self, term: bool = False) -> None:
         """function to start server at the given remote machine
         command explaination:
         -t: force psuedo-terminal allocation
@@ -145,16 +149,16 @@ class Vnc:
             time.sleep(1)
 
     @check_remote
-    def stop_server(self):
+    def stop_server(self) -> None:
         """function to stop tigervnc server"""
-        cmd = ['ssh', self.remote, 'killall', self.__SERVER]
-        if subprocess.run(cmd, stdout=subprocess.PIPE).returncode == 0:
+        cmd = ['ssh', str(self.remote), 'killall', self.__SERVER]
+        if subprocess.run(args=cmd, stdout=subprocess.PIPE).returncode == 0:
             print("Closed {} at {}".format(self.__SERVER, self.remote))
 
     @check_remote
-    def is_server_running(self):
+    def is_server_running(self) -> bool:
         """function to check whether tigervnc server is running at remote"""
-        cmd = ['ssh', self.remote, 'pgrep', '-f', self.__SERVER]
+        cmd = ['ssh', str(self.remote), 'pgrep', '-f', self.__SERVER]
         if subprocess.run(cmd, stdout=subprocess.PIPE).returncode == 0:
             print("{} already running at {}"
                   .format(self.__SERVER, self.remote))
@@ -162,7 +166,7 @@ class Vnc:
         else:
             return False
 
-    def is_client_running(self):
+    def is_client_running(self) -> int:
         """function to check whether vncviewer is running at local machine
         Returns:
             num_proc (int): number of vncviewer processes are running
@@ -178,7 +182,7 @@ class Vnc:
             return 0
 
     @check_remote
-    def start_client(self):
+    def start_client(self) -> None:
         """function start vnc client and connect with server at remote
         start server if it's not running then connect with server
         """
@@ -199,7 +203,7 @@ class Vnc:
             self.stop_server()
 
 
-def main():
+def main() -> None:
     # open doc in case of insufficient argument(s)
     if len(sys.argv) == 1 or sys.argv[1] == '-h' or sys.argv[1] == '--help':
         print(__doc__)
